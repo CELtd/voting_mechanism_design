@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 
 class BadgeHolder(ABC):
-    @abstractmethod
-    def cast_vote(self):
-        pass
+    pass
 
-class BadgeholderPopulation(ABC):
+class BadgeHolderPopulation(ABC):
     @abstractmethod
     def __init__(self, badgeholders):
         self.badgeholders = badgeholders
@@ -20,4 +18,8 @@ class BadgeholderPopulation(ABC):
 
     @abstractmethod
     def cast_votes(self):
+        pass
+
+    @abstractmethod
+    def set_random_generator(self):
         pass

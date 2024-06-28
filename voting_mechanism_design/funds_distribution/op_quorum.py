@@ -1,7 +1,8 @@
-
 import numpy as np
 
-class OpQuorum:
+from voting_mechanism_design.funds_distribution.funding_design import FundingDesign
+
+class OpQuorum(FundingDesign):
     def __init__(self, max_funding):
         self.max_funding = max_funding
 

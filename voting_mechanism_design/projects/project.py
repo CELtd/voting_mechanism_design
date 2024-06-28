@@ -24,8 +24,7 @@ class Project:
 
     def add_vote(self, vote):
         self.votes.append(vote)
-        votes = self.get_votes()
-        self.num_votes = len(votes)
+        self.num_votes = len(self.votes)
 
     # def get_votes(self):
     #     return [vote.amount for vote in self.votes if vote.amount is not None]
