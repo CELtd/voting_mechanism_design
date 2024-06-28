@@ -1,4 +1,4 @@
-from vote import Vote
+from .vote import Vote
 
 # TODO: define a class which describes what a vote looks like in  a pairwise ranking system
 class PairwiseRankingVote(Vote):
