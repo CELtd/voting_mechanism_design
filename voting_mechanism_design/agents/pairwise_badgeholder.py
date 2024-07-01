@@ -46,8 +46,8 @@ class PairwiseBadgeholder:
             self.votes.append(vote_obj)
             # assign the vote received to each project
             # TODO: is it better to add the vote object??
-            project1.add_vote(project1_vote)
-            project2.add_vote(project2_vote)
+            project1.add_vote(vote_obj)  # vote_obj will have a self-reference to project1
+            project2.add_vote(vote_obj)  # vote_obj will have a self-reference to project2
 
 
 class PairwiseBadgeholderPopulation(BadgeHolderPopulation):
@@ -71,6 +71,12 @@ class PairwiseBadgeholderPopulation(BadgeHolderPopulation):
             view = []
         for badgeholder in self.badgeholders:
             badgeholder.cast_votes(view)
+
+    def get_all_votes(self):
+        all_votes = []
+        for badgeholder in self.badgeholders:
+            all_votes.extend(badgeholder.votes)
+        return all_votes
 
     def set_random_generator(self, rng):
         for badgeholder in self.badgeholders:
