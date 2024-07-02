@@ -8,6 +8,7 @@ class Project:
         self.owner_id = owner_id    
 
         self.true_impact = true_impact    
+        assert 0 <= self.true_impact <= 1, "True impact must be between 0 and 1"
 
         # variables needed for voting simulations
         self.votes: List[Vote] = []
