@@ -1,3 +1,5 @@
+import numpy as np
+
 from voting_mechanism_design.agents.definitions import BadgeHolder, BadgeHolderPopulation
 from voting_mechanism_design.voting_designs.ranking import PairwiseRankingVote
 
@@ -43,7 +45,9 @@ class PairwiseBadgeholder:
         if self.voting_style == 'random':
             self.cast_random_votes(view)
         elif self.voting_style == 'skewed_towards_impact':
-            self.cast_skewed_towards_impact_vote(view)
+            self.cast_skewed_towards_impact_votes(view)
+        elif self.voting_style == 'perfect':
+            self.cast_perfect_votes(view)
         else:
             raise ValueError(f"{self.voting_style} not yet implemented!")
         
@@ -55,7 +59,37 @@ class PairwiseBadgeholder:
         assert self.project_population is not None, "Projects have not been sent to the voter yet"
         assert self.rng is not None, "Random generator has not been set"
 
-    def cast_skewed_towards_impact_vote(self, view):
+    def cast_perfect_votes(self, view):
+        """
+        view - a list of tuples, where the values are the projects to vote on
+               pairwise to the agent to vote on
+        """
+        self._prevote_checks()
+
+        for pair in view:
+            project1, project2 = pair
+            assert self.project_population.get_project(project1.project_id) is not None, "Project 1 is not in the list of projects"
+            assert self.project_population.get_project(project2.project_id) is not None, "Project 2 is not in the list of projects"
+
+            # ideal voting
+            if project1.true_impact > project2.true_impact:
+                project1_vote, project2_vote = 1, 0
+            else:
+                project1_vote, project2_vote = 0, 1
+
+            vote_obj = PairwiseRankingVote(
+                self,  # pass the voter information to the project, although in the real round this won't be done to keep votes anonymous
+                project1,
+                project2,
+                project1_vote,
+                project2_vote
+            )
+            self.votes.append(vote_obj)
+            # assign the vote received to each project
+            project1.add_vote(vote_obj)  # vote_obj will have a self-reference to project1
+            project2.add_vote(vote_obj)  # vote_obj will have a self-reference to project2
+
+    def cast_skewed_towards_impact_votes(self, view):
         """
         view - a list of tuples, where the values are the projects to vote on
                pairwise to the agent to vote on
@@ -68,11 +102,33 @@ class PairwiseBadgeholder:
             assert self.project_population.get_project(project2.project_id) is not None, "Project 2 is not in the list of projects"
 
             # decide which project to vote for, based on expertise
-            threshold = 0.5 + (project1.true_impact - project2.true_impact) * self.expertise
-            if self.rng.random() < threshold:
-                project1_vote, project2_vote = 1, 0
+            # determine the probability that the voter will vote for the correct project
+            # TODO: this mapping should be generalized!
+            impact_delta = np.abs(project1.true_impact - project2.true_impact)
+            if self.expertise == 0:
+                probability_correct_vote = 0.5
+            elif self.expertise == 1:
+                probability_correct_vote = 1.0
             else:
-                project1_vote, project2_vote = 0, 1
+                probability_correct_vote = 0.5 + impact_delta * 0.5 / (1-self.expertise)
+            probability_correct_vote = np.clip(probability_correct_vote, 0, 1)
+            
+            # determine from a random draw whether the vote will be correct or incorrect
+            make_correct_vote = False
+            if self.rng.random() < probability_correct_vote:
+                make_correct_vote = True
+
+            # map this to the vote
+            if make_correct_vote:
+                if project1.true_impact > project2.true_impact:
+                    project1_vote, project2_vote = 1, 0
+                else:
+                    project1_vote, project2_vote = 0, 1
+            else:
+                if project1.true_impact > project2.true_impact:
+                    project1_vote, project2_vote = 0, 1
+                else:
+                    project1_vote, project2_vote = 1, 0
 
             vote_obj = PairwiseRankingVote(
                 self,  # pass the voter information to the project, although in the real round this won't be done to keep votes anonymous
