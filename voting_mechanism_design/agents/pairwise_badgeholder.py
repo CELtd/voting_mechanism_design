@@ -11,6 +11,7 @@ class PairwiseBadgeholder:
             voting_style_kwargs=None,
             expertise=1.0,  # a floating point value indicating how closely to the true impact for a project the badgeholder will vote
                             # if it is not a "random" badgeholder
+            laziness=0.0,   # a value between 0 and 1 representing how many projects the badgeholder will skip voting on
         ):
         self.badgeholder_id = badgeholder_id
         self.votes = []
@@ -21,16 +22,7 @@ class PairwiseBadgeholder:
         self.voting_style_kwargs = voting_style_kwargs
 
         self.expertise = expertise
-        """
-        In the binary pairwise voting scheme, a voter needs to choose which project they rate higher, when presented w/ two projects.
-        In simulation, we draw a random number between 0 and 1, and if the number is less than a threshold, the voter will vote for project A, otherwise project B.
-        The relative true impact of the two projects is the "true" winner, as in, if A's impact > B's impact, a fully expert voter should vote for A.
-        The expertise parameter is a floating point value between 0 and 1, where 0 means the voter is completely random, and 1 means the voter is completely expert.
-        
-        The threshold for the voter to vote for A is 0.5 + (impact_A - impact_B) * expertise.
-
-        For example, if the true impact of A is 0.6 and B is 0.4, and the expertise is 0.5, the threshold for the voter to vote for A is 0.5 + (0.6 - 0.4) * 0.5 = 0.6.
-        """
+        self.laziness = laziness
 
     def reset_voter(self):
         self.votes = []
@@ -95,8 +87,18 @@ class PairwiseBadgeholder:
                pairwise to the agent to vote on
         """
         self._prevote_checks()
+        
+        # determine which indices to vote on, based on laziness
+        num_votes = len(view)
+        num_votes_to_cast = int(num_votes * (1 - self.laziness))
+        if num_votes_to_cast == 0:
+            return
+        elif self.laziness == 0:
+            view_to_process = view
+        else:
+            view_to_process = self.rng.choice(view, num_votes_to_cast, replace=False)
 
-        for pair in view:
+        for pair in view_to_process:
             project1, project2 = pair
             assert self.project_population.get_project(project1.project_id) is not None, "Project 1 is not in the list of projects"
             assert self.project_population.get_project(project2.project_id) is not None, "Project 2 is not in the list of projects"
@@ -176,6 +178,7 @@ class PairwiseBadgeholderPopulation(BadgeHolderPopulation):
     def __init__(self):
         self.badgeholders = []
         self.num_badgeholders = 0
+        self.rng = None
 
     def add_badgeholders(self, badgeholders):
         self.badgeholders.extend(badgeholders)
@@ -188,11 +191,16 @@ class PairwiseBadgeholderPopulation(BadgeHolderPopulation):
     def communicate(self):
         pass
 
-    def cast_votes(self, view=None):
+    def cast_votes(self, view=None, randomize_order=False):
+        # TODO: this is clunky - fix it
         if view is None:
-            view = []
-        for badgeholder in self.badgeholders:
-            badgeholder.cast_votes(view)
+            for badgeholder in self.badgeholders:
+                badgeholder.cast_votes()
+        else:
+            for badgeholder in self.badgeholders:
+                if randomize_order:
+                    view = self.rng.permutation(view)
+                badgeholder.cast_votes(view)
 
     def get_all_votes(self):
         all_votes = []
@@ -201,5 +209,6 @@ class PairwiseBadgeholderPopulation(BadgeHolderPopulation):
         return all_votes
 
     def set_random_generator(self, rng):
+        self.rng = rng
         for badgeholder in self.badgeholders:
             badgeholder.set_random_generator(rng)
