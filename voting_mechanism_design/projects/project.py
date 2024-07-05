@@ -16,6 +16,11 @@ class Project:
         self.score = None
         self.token_amount = 0
 
+    # def __eq__(self, value: object) -> bool:
+    #     if self.project_id == value.project_id:
+    #         return True
+    #     return False
+
     # TODO: do we need this?
     def reset_project(self):
         self.votes: List[Vote] = []
