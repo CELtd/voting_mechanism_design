@@ -123,7 +123,8 @@ class PairwiseBadgeholder:
                             num_votes_to_cast -= 1
                         else:
                             view_remaining.append(pair)
-                view_remaining = self.rng.choice(view_remaining, num_votes_to_cast, replace=False)
+                if num_votes_to_cast < len(view_remaining):
+                    view_remaining = self.rng.choice(view_remaining, num_votes_to_cast, replace=False)
                 view_to_process.extend(view_remaining)
             else:
                 view_to_process = self.rng.choice(view, num_votes_to_cast, replace=False)
@@ -135,10 +136,12 @@ class PairwiseBadgeholder:
 
             coi_voted = False
             if self.engaging_in_coi:
-                if project1 in self.coi_projects:
+                if project1.project_id in self.coi_projects:
+                    # print(f'ID{self.badgeholder_id} --> COI voting for {project1.project_id} // 1')
                     project1_vote, project2_vote = 1, 0
                     coi_voted = True
-                elif project2 in self.coi_projects:
+                elif project2.project_id in self.coi_projects:
+                    # print(f'ID{self.badgeholder_id} --> COI voting for {project2.project_id} // 2')
                     project1_vote, project2_vote = 0, 1
                     coi_voted = True
                 
