@@ -95,7 +95,7 @@ class PairwiseBadgeholder:
             project1.add_vote(vote_obj)  # vote_obj will have a self-reference to project1
             project2.add_vote(vote_obj)  # vote_obj will have a self-reference to project2
 
-    def cast_skewed_towards_impact_votes(self, view):
+    def cast_skewed_towards_impact_votes(self, view, use_impact_delta=True):
         """
         view - a list of tuples, where the values are the projects to vote on
                pairwise to the agent to vote on
@@ -149,13 +149,19 @@ class PairwiseBadgeholder:
                 # decide which project to vote for, based on expertise
                 # determine the probability that the voter will vote for the correct project
                 # TODO: this mapping should be generalized!
-                impact_delta = np.abs(project1.true_impact - project2.true_impact)
                 if self.expertise == 0:
                     probability_correct_vote = 0.5
                 elif self.expertise == 1:
                     probability_correct_vote = 1.0
                 else:
-                    probability_correct_vote = 0.5 + impact_delta * 0.5 / (1-self.expertise)
+                    if use_impact_delta:
+                        impact_delta = np.abs(project1.true_impact - project2.true_impact)
+
+                        # experiment w/ different fn's, but make this cleaner once experimentation is complete
+                        # probability_correct_vote = 0.5 + impact_delta * 0.5 / (1-self.expertise)
+                        probability_correct_vote = self.expertise * impact_delta + 0.5
+                    else:
+                        probability_correct_vote = self.expertise  # this is mapped to the updated Q+T expertise mapping function
                 probability_correct_vote = np.clip(probability_correct_vote, 0, 1)
                 
                 # determine from a random draw whether the vote will be correct or incorrect
