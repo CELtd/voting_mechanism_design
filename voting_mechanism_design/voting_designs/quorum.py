@@ -1,4 +1,4 @@
-from vote import Vote
+from .vote import Vote
 
 class QuorumVote(Vote):
     def __init__(self, voter, project, amount):

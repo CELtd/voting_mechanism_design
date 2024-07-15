@@ -18,6 +18,7 @@ class QuorumBadgeholder(BadgeHolder):
         self.coi_factor = coi_factor
 
         self.projects = None
+        self.rng=None
 
     def reset_voter(self):
         self.votes = []
@@ -25,6 +26,9 @@ class QuorumBadgeholder(BadgeHolder):
 
     def send_applications_to_voter(self, projects):
         self.projects = projects
+
+    def set_random_generator(self, rng):
+        self.rng = rng
 
     def cast_votes(self):
         """
@@ -42,6 +46,15 @@ class QuorumBadgeholder(BadgeHolder):
         # self.votes.append(vote)
         # project.add_vote(vote)
         pass
+
+    def cast_vote(self, project, amount):
+        if self.voter_id == project.owner_id:
+            amount = None
+        if amount:
+            self.balance_op -= amount
+        vote = Vote(self, project, amount)
+        self.votes.append(vote)
+        project.add_vote(vote)
 
     def get_votes(self):
         return [
@@ -77,5 +90,20 @@ class QuorumBadgeholderPopulation(BadgeHolderPopulation):
         # negative and positive based on the things we want to test
         pass
 
-    def cast_votes(self):
-        pass
+    def cast_votes(self, view=None): #code from pairwise
+        if view is None:
+            view = []
+        for badgeholder in self.badgeholders:
+            badgeholder.cast_votes(view)# code breaks here
+
+    def cast_vote(self,)
+            
+    def get_all_votes(self):
+        all_votes = []
+        for badgeholder in self.badgeholders:
+            all_votes.extend(badgeholder.votes)
+        return all_votes
+
+    def set_random_generator(self,rng):
+        for badgeholder in self.badgeholders:
+            badgeholder.set_random_generator(rng)
