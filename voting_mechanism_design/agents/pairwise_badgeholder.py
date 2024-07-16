@@ -13,7 +13,7 @@ class PairwiseBadgeholder:
             expertise=1.0,  # a floating point value indicating how closely to the true impact for a project the badgeholder will vote
                             # if it is not a "random" badgeholder
             laziness=0.0,   # a value between 0 and 1 representing how many projects the badgeholder will skip voting on
-            coi_projects=[],  # a list of project IDs that the badgeholder has a conflict of interest with
+            coi_project_ix_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
             engaging_in_coi=False  # a boolean indicating whether the badgeholder will engage in COIs
         ):
         self.badgeholder_id = badgeholder_id
@@ -32,7 +32,7 @@ class PairwiseBadgeholder:
         #  if engaging_in_coi is False, then the badgeholder will not vote ON projects they have a COI with.
         #  if engaging_in_coi is True, then the badgeholder will vote FOR projects they have a COI with, and vote
         #     the remaining according to their expertise.
-        self.coi_projects = coi_projects
+        self.coi_project_ix_vec = coi_project_ix_vec
         self.engaging_in_coi = engaging_in_coi
 
     def reset_voter(self):
@@ -115,10 +115,10 @@ class PairwiseBadgeholder:
             view_remaining = []
             view_to_process = []
             if self.engaging_in_coi:
-                for coi_project in self.coi_projects:
+                for coi_project_ix in self.coi_project_ix_vec:
                     for pair in view:
                         project1, project2 = pair
-                        if coi_project.project_id == project1.project_id or coi_project.project_id == project2.project_id:
+                        if coi_project_ix == project1.project_id or coi_project_ix == project2.project_id:
                             view_to_process.append(pair)
                             num_votes_to_cast -= 1
                         else:
@@ -136,11 +136,11 @@ class PairwiseBadgeholder:
 
             coi_voted = False
             if self.engaging_in_coi:
-                if project1.project_id in self.coi_projects:
+                if project1.project_id in self.coi_project_ix_vec:
                     # print(f'ID{self.badgeholder_id} --> COI voting for {project1.project_id} // 1')
                     project1_vote, project2_vote = 1, 0
                     coi_voted = True
-                elif project2.project_id in self.coi_projects:
+                elif project2.project_id in self.coi_project_ix_vec:
                     # print(f'ID{self.badgeholder_id} --> COI voting for {project2.project_id} // 2')
                     project1_vote, project2_vote = 0, 1
                     coi_voted = True
