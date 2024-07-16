@@ -1,12 +1,14 @@
 from voting_mechanism_design.agents.definitions import BadgeHolder, BadgeHolderPopulation
 from voting_mechanism_design.voting_designs.quorum import QuorumVote
+import numpy as np
 
 class QuorumBadgeholder(BadgeHolder):
-    def __init__(self, badgeholder_id, total_funds, min_vote, max_vote, laziness, expertise, coi_factor=0):
+    def __init__(self, badgeholder_id, total_funds=100, min_vote=1, max_vote=16, laziness=1, expertise=1, coi_factor=0):
         self.badgeholder_id = badgeholder_id
         self.votes = []
 
         # accounting
+        self.initial_funds = total_funds
         self.total_funds = total_funds
         self.min_vote = min_vote
         self.max_vote = max_vote
@@ -23,6 +25,7 @@ class QuorumBadgeholder(BadgeHolder):
     def reset_voter(self):
         self.votes = []
         self.funds_spent = 0
+        self.total_funds = self.initial_funds
 
     def send_applications_to_voter(self, projects):
         self.projects = projects
@@ -30,31 +33,15 @@ class QuorumBadgeholder(BadgeHolder):
     def set_random_generator(self, rng):
         self.rng = rng
 
-    def cast_votes(self):
-        """
-        Vote on a subset of all the projects that were made available to the voter
-        """
-        assert self.projects is not None, "Projects have not been sent to the voter yet"
-
-        # # TODO: determine the amount according to some distribution, and taking into account COI
-
-        # if self.voter_id == project.owner_id:
-        #     amount = None
-        # if amount:
-        #     self.balance_op -= amount
-        # vote = QuorumVote(self, project, amount)
-        # self.votes.append(vote)
-        # project.add_vote(vote)
-        pass
-
     def cast_vote(self, project, amount):
-        if self.voter_id == project.owner_id:
+        #print(self.total_funds,amount) as intended
+        if self.badgeholder_id == project.owner_id:
             amount = None
         if amount:
-            self.balance_op -= amount
-        vote = Vote(self, project, amount)
-        self.votes.append(vote)
-        project.add_vote(vote)
+            self.total_funds -= amount
+        vote_obj = QuorumVote(self, project, amount)
+        self.votes.append(vote_obj)
+        project.add_vote(vote_obj)
 
     def get_votes(self):
         return [
@@ -90,13 +77,30 @@ class QuorumBadgeholderPopulation(BadgeHolderPopulation):
         # negative and positive based on the things we want to test
         pass
 
-    def cast_votes(self, view=None): #code from pairwise
-        if view is None:
-            view = []
+    def cast_votes(self, projects):
         for badgeholder in self.badgeholders:
-            badgeholder.cast_votes(view)# code breaks here
+            num_projects = len(projects)
+            ballot_size = int((badgeholder.laziness_factor) * num_projects)
+            subjectivity_scores = np.random.uniform(badgeholder.expertise_factor, 2 - badgeholder.expertise_factor, num_projects)
+            personal_ratings = np.array([project.true_impact for project in projects]) * subjectivity_scores
+            #print(num_projects,ballot_size,subjectivity_scores,personal_ratings,badgeholder.total_funds) #as intended
 
-    def cast_vote(self,)
+            sorted_project_indices = np.argsort(-personal_ratings)[:ballot_size]# we want to vote from best to worst as the first votes tend to be higher in value ei, theres more intention behind those votes.
+            for idx, project_idx in enumerate(sorted_project_indices):
+                project = projects[project_idx]
+                remaining_votes = ballot_size - idx
+                max_vote_per_project = (badgeholder.total_funds * badgeholder.laziness_factor) / np.sqrt(remaining_votes)
+                #print(remaining_votes,idx,max_vote_per_project) #as intended
+                
+                if max_vote_per_project < badgeholder.min_vote:
+                    #print("no vote")
+                    amount = None
+                else:
+                    lb = int(badgeholder.min_vote)
+                    ub = int(min(badgeholder.max_vote, max_vote_per_project))
+                    amount = np.random.uniform(lb, ub) if lb < (ub) else lb
+                    #print(amount,lb,ub) # as intended
+                badgeholder.cast_vote(project, amount)
             
     def get_all_votes(self):
         all_votes = []
@@ -107,3 +111,7 @@ class QuorumBadgeholderPopulation(BadgeHolderPopulation):
     def set_random_generator(self,rng):
         for badgeholder in self.badgeholders:
             badgeholder.set_random_generator(rng)
+
+    def reset_all(self):
+        for badgeholder in self.badgeholders:
+            badgeholder.reset_voter()
