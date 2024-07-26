@@ -14,7 +14,7 @@ class PairwiseBadgeholder:
                             # if it is not a "random" badgeholder
             laziness=0.0,   # a value between 0 and 1 representing how many projects the badgeholder will skip voting on
             coi_project_ix_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
-            engaging_in_coi=False  # a boolean indicating whether the badgeholder will engage in COIs
+            coi_factor=0.0  # a floating point value between 0 and 1 that indicates how much COI this badgeholder is engaging in
         ):
         self.badgeholder_id = badgeholder_id
         self.votes = []
@@ -29,11 +29,11 @@ class PairwiseBadgeholder:
 
         # conflict of interest information
         # The way this is implemented in this package is:
-        #  if engaging_in_coi is False, then the badgeholder will not vote ON projects they have a COI with.
-        #  if engaging_in_coi is True, then the badgeholder will vote FOR projects they have a COI with, and vote
+        #  if coi_factor is 0, then the badgeholder will not vote ON projects they have a COI with.
+        #  if coi_factor > 0, then the badgeholder will vote FOR projects they have a COI with coi_factor% of the time, and vote
         #     the remaining according to their expertise.
         self.coi_project_ix_vec = coi_project_ix_vec
-        self.engaging_in_coi = engaging_in_coi
+        self.coi_factor = coi_factor
 
     def reset_voter(self):
         self.votes = []
@@ -114,7 +114,7 @@ class PairwiseBadgeholder:
             # engaging in COI
             view_remaining = []
             view_to_process = []
-            if self.engaging_in_coi:
+            if self.coi_factor > 0:
                 for coi_project_ix in self.coi_project_ix_vec:
                     for pair in view:
                         project1, project2 = pair
@@ -134,18 +134,29 @@ class PairwiseBadgeholder:
             assert self.project_population.get_project(project1.project_id) is not None, "Project 1 is not in the list of projects"
             assert self.project_population.get_project(project2.project_id) is not None, "Project 2 is not in the list of projects"
 
-            coi_voted = False
-            if self.engaging_in_coi:
+            voted_on_pair = False
+            if self.coi_factor > 0:
+                # draw a random number to determine if the badgeholder will vote for a COI project, based on the coi factor
+                if self.rng.random() < self.coi_factor:
+                    vote_coi = True
+                else:
+                    vote_coi = False
+
                 if project1.project_id in self.coi_project_ix_vec:
-                    # print(f'ID{self.badgeholder_id} --> COI voting for {project1.project_id} // 1')
-                    project1_vote, project2_vote = 1, 0
-                    coi_voted = True
+                    if vote_coi:
+                        project1_vote, project2_vote = 1, 0
+                    else:
+                        project1_vote, project2_vote = 0, 1
+                    voted_on_pair = True
                 elif project2.project_id in self.coi_project_ix_vec:
                     # print(f'ID{self.badgeholder_id} --> COI voting for {project2.project_id} // 2')
-                    project1_vote, project2_vote = 0, 1
-                    coi_voted = True
+                    if vote_coi:
+                        project1_vote, project2_vote = 0, 1
+                    else:
+                        project1_vote, project2_vote = 1, 0
+                    voted_on_pair = True
                 
-            if not coi_voted:
+            if not voted_on_pair:
                 # decide which project to vote for, based on expertise
                 # determine the probability that the voter will vote for the correct project
                 # TODO: this mapping should be generalized!
