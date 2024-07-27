@@ -137,7 +137,8 @@ class PairwiseBadgeholder:
             voted_on_pair = False
             if self.coi_factor > 0:
                 # draw a random number to determine if the badgeholder will vote for a COI project, based on the coi factor
-                if self.rng.random() < self.coi_factor:
+                probability_coi_vote = self.coi_factor*0.5 + 0.5
+                if self.rng.random() < probability_coi_vote:
                     vote_coi = True
                 else:
                     vote_coi = False
