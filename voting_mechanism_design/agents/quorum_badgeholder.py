@@ -80,26 +80,31 @@ class QuorumBadgeholderPopulation(BadgeHolderPopulation):
     def cast_votes(self, projects):
         for badgeholder in self.badgeholders:
             num_projects = len(projects)
-            ballot_size = int((badgeholder.laziness_factor) * num_projects)
+            ballot_size = int((1 - badgeholder.laziness_factor) * num_projects)
             subjectivity_scores = np.random.uniform(badgeholder.expertise_factor, 2 - badgeholder.expertise_factor, num_projects)
-            personal_ratings = np.array([project.true_impact for project in projects]) * subjectivity_scores
-            #print(num_projects,ballot_size,subjectivity_scores,personal_ratings,badgeholder.total_funds) #as intended
+            #personal_ratings = np.array([project.true_impact for project in projects]) * subjectivity_scores
+            personal_ratings = np.array([project.true_impact for project in projects])
 
-            sorted_project_indices = np.argsort(-personal_ratings)[:ballot_size]# we want to vote from best to worst as the first votes tend to be higher in value ei, theres more intention behind those votes.
+            sorted_project_indices = np.argsort(-personal_ratings)#[:ballot_size]
             for idx, project_idx in enumerate(sorted_project_indices):
                 project = projects[project_idx]
-                remaining_votes = ballot_size - idx
-                max_vote_per_project = (badgeholder.total_funds * badgeholder.laziness_factor) / np.sqrt(remaining_votes)
-                #print(remaining_votes,idx,max_vote_per_project) #as intended
-                
-                if max_vote_per_project < badgeholder.min_vote:
-                    #print("no vote")
+                if idx >= ballot_size:
                     amount = None
                 else:
-                    lb = int(badgeholder.min_vote)
-                    ub = int(min(badgeholder.max_vote, max_vote_per_project))
-                    amount = np.random.uniform(lb, ub) if lb < (ub) else lb
-                    #print(amount,lb,ub) # as intended
+                    #add if for case when laziness is 0: 
+                    if badgeholder.laziness_factor==0:
+                        max_vote_per_project = (badgeholder.total_funds) / np.sqrt(ballot_size - idx)
+                    else:
+                        max_vote_per_project = (badgeholder.total_funds * badgeholder.laziness_factor) / np.sqrt(ballot_size - idx)                
+                    
+                    if max_vote_per_project < badgeholder.min_vote:
+                        amount = None
+                    else:
+                        lb = int(badgeholder.min_vote)
+                        ub = int(min(badgeholder.max_vote, max_vote_per_project))
+                        #amount = np.random.uniform(lb, ub) if lb < (ub) else lb
+                        amount=(lb+ub)/2
+
                 badgeholder.cast_vote(project, amount)
             
     def get_all_votes(self):
