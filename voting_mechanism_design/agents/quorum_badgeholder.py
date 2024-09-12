@@ -3,7 +3,7 @@ from voting_mechanism_design.voting_designs.quorum import QuorumVote
 import numpy as np
 
 class QuorumBadgeholder(BadgeHolder):
-    def __init__(self, badgeholder_id, total_funds=100, min_vote=1, max_vote=16, laziness=1, expertise=1, coi_factor=0):
+    def __init__(self, badgeholder_id, total_funds=100, min_vote=1, max_vote=16, laziness=1, expertise=1, coi_factor=0, expertise_model="k2"):
         self.badgeholder_id = badgeholder_id
         self.votes = []
 
@@ -18,6 +18,8 @@ class QuorumBadgeholder(BadgeHolder):
         self.laziness_factor = laziness
         self.expertise_factor = expertise
         self.coi_factor = coi_factor
+        self.expertise_model = expertise_model
+
 
         self.projects = None
         self.rng=None
@@ -77,14 +79,79 @@ class QuorumBadgeholderPopulation(BadgeHolderPopulation):
         # negative and positive based on the things we want to test
         pass
 
+    def expertise2alignment_k2(self, projects, e):
+        random_seed_start=123
+        rng = np.random.default_rng(random_seed_start)
+        true_project_impact_vec = [project.true_impact for project in projects]
+        true_project_impact_vec_sorted_ix = np.argsort(true_project_impact_vec)  # only for comparison purposes
+        
+        personal_ratings_ix = np.argsort(true_project_impact_vec)  # this is perfect rating
+        p_shuffle_vec = np.zeros(len(personal_ratings_ix))
+        for ii in range(len(personal_ratings_ix)):
+            p_shuffle_vec[ii] = (1- e)      # currently, not dependent on the "true impact" of a project, but can be in the future
+        # find which indices we should shuffle
+        ix_to_shuffle = []
+        for ii in range(len(p_shuffle_vec)):
+            rv = rng.uniform(0,1)
+            if rv < p_shuffle_vec[ii]:
+                ix_to_shuffle.append(ii)
+        # shuffle the indices that need to be
+        personal_ratings_ix[ix_to_shuffle] = rng.permutation(personal_ratings_ix[ix_to_shuffle])
+        return personal_ratings_ix
+
+
+    def expertise2alignment_carl(self, projects, e):
+        random_seed_start=123
+        rng = np.random.default_rng(random_seed_start)
+        project_impact_vec = [project.true_impact for project in projects]
+        #subjectivity_score = rng.uniform(e, 2-e, len(projects) )#this one uses rng
+        subjectivity_score = np.random.uniform(e, 2-e, len(projects))
+        #personal_ratings = np.array([project.true_impact for project in projects]) 
+        personal_ratings = np.asarray(project_impact_vec*subjectivity_score)
+
+        return personal_ratings
+            
     def cast_votes(self, projects):
+        for badgeholder in self.badgeholders:
+            num_projects = len(projects)
+            ballot_size = int((1 - badgeholder.laziness_factor) * num_projects)
+            if badgeholder.expertise_model == "carl":
+                personal_ratings= self.expertise2alignment_carl(projects, badgeholder.expertise_factor)
+            else:
+                personal_ratings= self.expertise2alignment_k2(projects, badgeholder.expertise_factor)
+            sorted_project_indices = np.argsort(-personal_ratings)
+            for idx, project_idx in enumerate(sorted_project_indices):
+                project = projects[project_idx]
+                if idx >= ballot_size:
+                    amount = None
+                else:
+                    if badgeholder.laziness_factor==0:
+                        max_vote_per_project = (badgeholder.total_funds) / np.sqrt(ballot_size - idx)
+                    else:
+                        max_vote_per_project = (badgeholder.total_funds * badgeholder.laziness_factor) / np.sqrt(ballot_size - idx)                
+                    
+                    if max_vote_per_project < badgeholder.min_vote:
+                        amount = None
+                    else:
+                        lb = int(badgeholder.min_vote)
+                        ub = int(min(badgeholder.max_vote, max_vote_per_project))
+                        #amount = np.random.uniform(lb, ub) if lb < (ub) else lb
+                        amount=(lb+ub)/2
+
+                badgeholder.cast_vote(project, amount)
+
+    
+    def cast_votes_old(self, projects):
         for badgeholder in self.badgeholders:
             num_projects = len(projects)
             ballot_size = int((1 - badgeholder.laziness_factor) * num_projects)
             subjectivity_scores = np.random.uniform(badgeholder.expertise_factor, 2 - badgeholder.expertise_factor, num_projects)
             #personal_ratings = np.array([project.true_impact for project in projects]) * subjectivity_scores
             personal_ratings = np.array([project.true_impact for project in projects])
-
+            
+            
+            
+            #So i want to replace this stuff with a function that depends on the expertise and expertise_model
             sorted_project_indices = np.argsort(-personal_ratings)#[:ballot_size]
             for idx, project_idx in enumerate(sorted_project_indices):
                 project = projects[project_idx]
