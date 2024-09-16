@@ -195,13 +195,16 @@ class Simulation:
                 voter_id = i, 
                 
                 # how much of the max funding they are willing to vote on (up to 100% of total)
-                op_available = self.round.max_funding * np.random.uniform(willingness_to_spend, 1), 
+                #op_available = self.round.max_funding * np.random.uniform(willingness_to_spend, 1), 
+                op_available = self.round.max_funding * willingness_to_spend, 
                                         
                 # how many of the total projects they are willing to consider in their ballot
-                laziness = np.random.uniform(laziness_factor, 1), 
+                #laziness = np.random.uniform(laziness_factor, 1), 
+                laziness = laziness_factor, 
                 
                 # how close their assessments track to project's "true" impact ratings
-                expertise = np.random.uniform(0, expertise_factor)
+                #expertise = np.random.uniform(0, expertise_factor)
+                expertise =  expertise_factor
             ) 
             for i in range(num_voters)
         ])
@@ -213,7 +216,8 @@ class Simulation:
                 project_id = i,
 
                 # a project's "true" impact on a bell curve distribution
-                rating = abs(np.random.normal(loc=3)),
+                #rating = abs(np.random.normal(loc=3)),
+                rating = 1,
 
                 # TODO: link projects to voters who may have conflicts of interest (COI)
                 owner_id = np.random.randint(0, self.round.num_voters) if np.random.random() < coi_factor else None
@@ -232,14 +236,19 @@ class Simulation:
             # Create an array for subjectivity scores and personal ratings
             subjectivity_scores = np.random.uniform(voter.expertise_factor, 2 - voter.expertise_factor, num_projects)
             personal_ratings = np.array([project.rating for project in self.round.projects]) * subjectivity_scores
+            personal_ratings = np.array([project.rating for project in self.round.projects])
+
             
             sorted_project_indices = np.argsort(-personal_ratings)
             for idx, project_idx in enumerate(sorted_project_indices):
                 project = self.round.projects[project_idx]
                 if idx >= ballot_size:
                     amount = None
-                else:                
-                    max_vote_per_project = (voter.balance_op * voter.laziness_factor) / np.sqrt(ballot_size - idx)
+                else:
+                    if voter.laziness_factor==0:
+                        max_vote_per_project = (voter.balance_op) / np.sqrt(ballot_size - idx)
+                    else:
+                        max_vote_per_project = (voter.balance_op * voter.laziness_factor) / np.sqrt(ballot_size - idx)
                     # if max_vote_per_project < 1:
                     if max_vote_per_project < self.min_project_vote:
                         amount = None
@@ -251,6 +260,7 @@ class Simulation:
                             amount = lb
                         else:
                             amount = np.random.randint(lb, ub)
+                            amount = (lb+ub)/2
                 voter.cast_vote(project, amount)
 
     
