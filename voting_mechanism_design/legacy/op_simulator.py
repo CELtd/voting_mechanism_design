@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Project:
     def __init__(self, project_id, rating, owner_id=None):
         self.project_id = project_id
@@ -262,7 +261,6 @@ class Simulation:
                             amount = np.random.randint(lb, ub)
                             amount = (lb+ub)/2
                 voter.cast_vote(project, amount)
-
     
     def allocate_votes(self, scoring_method='median', quorum=1, min_amount=1, normalize=True):
         allocations = self.round.calculate_allocations(scoring_method, quorum, min_amount, normalize)
