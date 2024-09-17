@@ -30,7 +30,7 @@ class QuorumBadgeholder(BadgeHolder):
         laziness=1, 
         expertise=1, 
         coi_factor=0, 
-        coi_project_ix_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
+        coi_project_id_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
     ):
         self.badgeholder_id = badgeholder_id
         self.votes = []
@@ -46,9 +46,9 @@ class QuorumBadgeholder(BadgeHolder):
         self.laziness_factor = laziness
         self.expertise_factor = expertise
         self.coi_factor = coi_factor
-        self.coi_project_ix_vec = coi_project_ix_vec
-        if self.coi_project_ix_vec is not None:
-            assert len(self.coi_project_ix_vec) <= 1, "COI only possible for 1 project at a time, currently!"
+        self.coi_project_id_vec = coi_project_id_vec
+        if self.coi_project_id_vec is not None:
+            assert len(self.coi_project_id_vec) <= 1, "COI only possible for 1 project at a time, currently!"
 
         self.project_population = None
         self.rng=None
@@ -91,19 +91,28 @@ class QuorumBadgeholder(BadgeHolder):
         # the COI project will be the first project in the list.  If COI factor is 0.5, then the project
         #  will be moved by half as many steps as it would if it were COI=1, and so on.
         if self.coi_factor > 0:
-            coi_project_idx = self.coi_project_ix_vec[0]
+            coi_project_id = self.coi_project_id_vec[0]
+            for p in projects:
+                if p.project_id == coi_project_id:
+                    coi_project_idx = np.where(sorted_project_indices == p.project_id)[0][0]
+                    break
+            assert coi_project_idx is not None
             # compute how many steps needed if COI_factor is 1
-            num_steps_coi_1 = np.where(sorted_project_indices == coi_project_idx)[0][0]
+            num_steps_coi_1 = np.where(sorted_project_indices == coi_project_id)[0][0]
             num_steps_actual = int(num_steps_coi_1 * self.coi_factor)
             ix_actual = coi_project_idx - num_steps_actual
+
+            # print(coi_project_id, coi_project_idx, num_steps_coi_1, num_steps_actual, ix_actual)
             assert ix_actual >= 0, "COI project index is negative!"
-            
-            print('before', sorted_project_indices)
+
+            # print('before', np.where(sorted_project_indices == coi_project_id)[0][0])
+            # print(sorted_project_indices)
             # move the COI project by num_steps_actual
             vv = sorted_project_indices[coi_project_idx]
             sorted_project_indices = np.delete(sorted_project_indices, coi_project_idx)
             sorted_project_indices = np.insert(sorted_project_indices, ix_actual, vv)
-            print('after', sorted_project_indices)
+            # print('after', np.where(sorted_project_indices == coi_project_id)[0][0])
+            # print(sorted_project_indices)
 
         vote_amounts = np.ones(num_projects)*-999
         vote_amounts[0:ballot_size] = create_monotonic_array(self.max_vote, self.min_vote, ballot_size, self.total_funds)
