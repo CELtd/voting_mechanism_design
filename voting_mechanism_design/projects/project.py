@@ -8,12 +8,18 @@ class Project:
         self.owner_id = owner_id    
 
         self.true_impact = true_impact    
+        assert 0 <= self.true_impact <= 1, "True impact must be between 0 and 1"
 
         # variables needed for voting simulations
         self.votes: List[Vote] = []
         self.num_votes = 0
         self.score = None
         self.token_amount = 0
+
+    # def __eq__(self, value: object) -> bool:
+    #     if self.project_id == value.project_id:
+    #         return True
+    #     return False
 
     # TODO: do we need this?
     def reset_project(self):

@@ -20,6 +20,8 @@ class RoundSimulation:
         self.funding_design = funding_design
         self.rng = np.random.default_rng(random_seed)
 
+        self.projectid2score = None
+
     def run(self, cast_votes_kwargs=None):
         """
         Steps
@@ -39,7 +41,7 @@ class RoundSimulation:
         self.badgeholder_population.send_application_information(self.projects)
         self.badgeholder_population.communicate()
         self.badgeholder_population.cast_votes(**cast_votes_kwargs) # this step updates internal variables for each project
-        self.funding_design.allocate_funds(self.projects)
+        self.projectid2score = self.funding_design.allocate_funds(self.projects.get_projects())
         # TODO: compute metrics and store
 
     def get_results(self):
