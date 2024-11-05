@@ -149,6 +149,40 @@ class QuorumBadgeholder(BadgeHolder):
             {'project_id': v.project.project_id, 'amount': v.amount} 
             for v in self.votes
         ]
+<<<<<<< Updated upstream:voting_mechanism_design/agents/quorum_badgeholder.py
+=======
+    def get_rank(self):
+        '''
+        returns a list of projects from the lowest amount of votes to the highest
+        '''
+        votes = self.get_votes()
+        ranks = [
+        vote['project_id']
+        for vote in sorted(votes, key=lambda x: (x['amount'] is None, x['amount']))
+        if vote['amount'] is not None
+    ]
+        
+        return ranks
+    def get_vote_dict(self):
+        res={}
+        for v in self.votes:
+            res[v.project.project_id]=v.amount
+        return res
+    def get_rank_dict(self):
+        '''
+        returns a dict mapping project_id with its rank of lowest vote amount to highest vote amount
+        '''
+        res={}
+        rankList = self.get_rank()
+        for i in range(100):
+            project_id=i
+            if project_id not in rankList:
+                res[project_id]=-1 #to record that the project isn't voted thus has no rank
+            else:
+                res[project_id]=rankList.index(project_id)
+        
+        
+>>>>>>> Stashed changes:notebooks/voting_mechanism_design/agents/quorum_badgeholder.py
     
 class QuorumBadgeholderPopulation(BadgeHolderPopulation):
     def __init__(self):
