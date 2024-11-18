@@ -1,5 +1,6 @@
 from voting_mechanism_design.agents.definitions import BadgeHolder, BadgeHolderPopulation
-from voting_mechanism_design.voting_designs.quorum import QuorumVote
+from voting_mechanism_design.voting_designs.quorum import QuorumVote 
+from voting_mechanism_design.mapping import mapping
 import numpy as np
 
 def create_monotonic_array(max_val, min_val, length, total_sum):
@@ -20,6 +21,7 @@ def create_monotonic_array(max_val, min_val, length, total_sum):
 
     return x
 
+
 class QuorumBadgeholder(BadgeHolder):
     def __init__(
         self, 
@@ -31,6 +33,7 @@ class QuorumBadgeholder(BadgeHolder):
         expertise=1, 
         coi_factor=0, 
         coi_project_id_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
+        vote_model = 'linear'
     ):
         self.badgeholder_id = badgeholder_id
         self.votes = []
@@ -41,6 +44,7 @@ class QuorumBadgeholder(BadgeHolder):
         self.min_vote = min_vote
         self.max_vote = max_vote
         self.funds_spent = 0
+        self.vote_model = vote_model
 
         # attributes which affect how the badgeholder votes
         self.laziness_factor = laziness
@@ -115,12 +119,19 @@ class QuorumBadgeholder(BadgeHolder):
             # print(sorted_project_indices)
 
         vote_amounts = np.ones(num_projects)*-999
-        vote_amounts[0:ballot_size] = create_monotonic_array(self.max_vote, self.min_vote, ballot_size, self.total_funds)
+        mappingObj = mapping(self.max_vote, self.min_vote, ballot_size, self.total_funds)
+        if self.vote_model == 'linear':
+            #the assumes sorted_project_indices is sorted from most votes to least votes as the vote_model casts the most votes to the smallest index
+            vote_amounts[0:ballot_size] = mappingObj.linear()
+        elif self.vote_model == 'logarithmic':
+            vote_amounts[0:ballot_size] = mappingObj.logarithmic()
+        elif self.vote_model == 'exponential':
+            vote_amounts[0:ballot_size] = mappingObj.exponential()
         for ix, project_idx in enumerate(sorted_project_indices):
             project = self.project_population.get_project(project_idx)
             vote_amt = vote_amounts[ix]
             if vote_amt == -999:
-                vote_amt = None
+                vote_amt = 0
             self.cast_vote(project, vote_amt)
         
         self.sorted_project_indices = sorted_project_indices
