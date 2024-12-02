@@ -2,6 +2,7 @@ from voting_mechanism_design.agents.definitions import BadgeHolder, BadgeHolderP
 from voting_mechanism_design.voting_designs.quorum import QuorumVote 
 from voting_mechanism_design.mapping import mapping
 import numpy as np
+import random
 
 def create_monotonic_array(max_val, min_val, length, total_sum):
     x = np.linspace(max_val, min_val, length)
@@ -33,7 +34,8 @@ class QuorumBadgeholder(BadgeHolder):
         expertise=1, 
         coi_factor=0, 
         coi_project_id_vec=[],  # a list of project IDs that the badgeholder has a conflict of interest with
-        vote_model = 'linear'
+        vote_model = 'linear',
+        random_seed=1234
     ):
         self.badgeholder_id = badgeholder_id
         self.votes = []
@@ -45,6 +47,10 @@ class QuorumBadgeholder(BadgeHolder):
         self.max_vote = max_vote
         self.funds_spent = 0
         self.vote_model = vote_model
+        self.rng = np.random.default_rng(random_seed)
+        self.selected_projects=[]
+        self.unselected_project=[]
+        self.personal_ratings_ix=[]
 
         # attributes which affect how the badgeholder votes
         self.laziness_factor = laziness
@@ -88,7 +94,26 @@ class QuorumBadgeholder(BadgeHolder):
 
         personal_ratings_ix = self.expertise2alignment(projects)
         sorted_project_indices = np.argsort(-personal_ratings_ix)
+        
+        #choose projects to vote on randomly
+        # Randomly select projects from the projects list, with the number of selected projects equal to ballot_size
+        selected_projects = self.rng.choice(projects, size=ballot_size, replace=False)
+        self.selected_projects=selected_projects
+        selected_projects_idx = [project.project_id for project in selected_projects]
+        unselected_projects=[]
+        for project in projects:
+            if project.project_id not in selected_projects_idx:
+                unselected_projects.append(project)
+        #unselected_projects = [project for project in projects if project not in selected_projects]
+        self.unselected_projects=unselected_projects
 
+        #Create a new sorted project indices list that only includes the selected projects
+        selected_sorted_project_indices=[]
+        for project_idx in sorted_project_indices:
+            if project_idx in selected_projects_idx:
+                selected_sorted_project_indices.append(project_idx)
+                
+      
         # TODO: model COI here
         # The approach we take is as follows:
         # The COI project will be sorted proportional to the COI factor.  If COI factor is 1, then
@@ -120,27 +145,47 @@ class QuorumBadgeholder(BadgeHolder):
 
         vote_amounts = np.ones(num_projects)*-999
         mappingObj = mapping(self.max_vote, self.min_vote, ballot_size, self.total_funds)
-        if self.vote_model == 'linear':
-            #the assumes sorted_project_indices is sorted from most votes to least votes as the vote_model casts the most votes to the smallest index
-            vote_amounts[0:ballot_size] = mappingObj.linear()
-        elif self.vote_model == 'logarithmic':
-            vote_amounts[0:ballot_size] = mappingObj.logarithmic()
-        elif self.vote_model == 'exponential':
-            vote_amounts[0:ballot_size] = mappingObj.exponential()
-        for ix, project_idx in enumerate(sorted_project_indices):
-            project = self.project_population.get_project(project_idx)
-            vote_amt = vote_amounts[ix]
-            if vote_amt == -999:
-                vote_amt = 0
-            self.cast_vote(project, vote_amt)
+
         
-        self.sorted_project_indices = sorted_project_indices
+        if self.vote_model == 'linear':
+        #the assumes sorted_project_indices is sorted from most votes to least votes as the vote_model casts the most votes to the smallest index
+            funding_curve = mappingObj.linear()
+        elif self.vote_model == 'logarithmic':
+            funding_curve = mappingObj.logarithmic()
+        elif self.vote_model == 'exponential':
+            #vote_amounts[0:ballot_size] = mappingObj.exponential()
+            funding_curve = mappingObj.exponential()
+
+        
+        #Map funding to the selected projects and add back the unselected projects as funding=0
+        #funding_curve_idx=0
+        for funding_curve_idx, project_idx in enumerate(selected_sorted_project_indices):
+            if funding_curve_idx >= len(funding_curve):
+                # To prevent going out of bounds, break the loop if funding_curve_idx is too large
+                break
+            project = self.project_population.get_project(project_idx)
+            vote_amt = funding_curve[funding_curve_idx]
+            #map the funding amount from the funding curve to the project
+            self.cast_vote(project, vote_amt)
+            #record the vote amount in the built in list -- vote_amounts
+            vote_amounts[project_idx]=vote_amt
+            funding_curve_idx+=1
+        for project in unselected_projects:
+            project_idx = project.project_id
+            vote_amt = 0
+            #assert vote_amounts[project_idx]==-999., "Unselected Projects is voted!"
+            vote_amounts[project_idx]=vote_amt
+            #append the unselected projects to the end of the sorted project indices list
+            selected_sorted_project_indices.append(project_idx)
+            self.cast_vote(project, vote_amt)
+        self.sorted_project_indices = selected_sorted_project_indices
         self.vote_amounts = vote_amounts
 
     def expertise2alignment(self, projects):
+        #true_project_impact_vec is an array whose element corresponds to the true impact of its index (which is the project id)
         true_project_impact_vec = [project.true_impact for project in projects]
         
-        personal_ratings_ix = np.argsort(true_project_impact_vec)  # this is perfect rating
+        personal_ratings_ix = np.argsort(true_project_impact_vec)  # this is perfect rating   
         p_shuffle_vec = np.zeros(len(personal_ratings_ix))
         for ii in range(len(personal_ratings_ix)):
             p_shuffle_vec[ii] = (1-self.expertise_factor)      # currently, not dependent on the "true impact" of a project, but can be in the future
