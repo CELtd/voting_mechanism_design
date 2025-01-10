@@ -7,4 +7,4 @@ class PairwiseBinary(FundingDesign):
         pass
 
     def allocate_funds(self, projects):
-        pass
+        return None, None

@@ -205,6 +205,12 @@ class QuorumBadgeholder(BadgeHolder):
             {'project_id': v.project.project_id, 'amount': v.amount} 
             for v in self.votes
         ]
+    def get_vote_dict(self):
+        res={}
+        for v in self.votes:
+            res[v.project.project_id]=v.amount
+        return res
+    
 #<<<<<<< Updated upstream:voting_mechanism_design/agents/quorum_badgeholder.py
 #=======
     def get_rank(self):
@@ -219,11 +225,7 @@ class QuorumBadgeholder(BadgeHolder):
     ]
         
         return ranks
-    def get_vote_dict(self):
-        res={}
-        for v in self.votes:
-            res[v.project.project_id]=v.amount
-        return res
+    
     def get_rank_dict(self):
         '''
         returns a dict mapping project_id with its rank of lowest vote amount to highest vote amount
